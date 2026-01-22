@@ -102,20 +102,20 @@ const App: React.FC = () => {
   const globalFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Fetch content from Serverless API on load
     const fetchContent = async () => {
       try {
         const res = await fetch('/api/content');
-        if (res.ok) {
+        // 尝试解析 JSON，如果解析失败（比如返回了 404 HTML），则忽略
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
           const data = await res.json();
           if (data) {
-             // Ensure navbar structure exists for legacy data migration
              if (!data.navbar) data.navbar = DEFAULT_CONTENT.navbar;
              setContent(data);
           }
         }
       } catch (e) {
-        console.error("Failed to load content from server", e);
+        console.error("Failed to load content", e);
       }
     };
     fetchContent();
@@ -138,24 +138,39 @@ const App: React.FC = () => {
     setContent(newContent);
   };
 
-  // Upload helper to send file to Vercel Blob API
   const uploadFile = async (file: File): Promise<string | null> => {
+    if (file.size > 4 * 1024 * 1024) {
+        alert("图片太大！请上传小于 4MB 的图片。");
+        return null;
+    }
+
     setIsUploading(true);
     try {
-      const response = await fetch(`/api/upload?filename=${file.name}`, {
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
+        headers: {
+            'Content-Type': file.type, 
+        },
         body: file,
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
+      const contentType = response.headers.get("content-type");
+      if (!contentType || contentType.indexOf("application/json") === -1) {
+        const text = await response.text();
+        console.error("API Error (Non-JSON):", text);
+        throw new Error("服务器配置错误：API 未正确响应 JSON。请在 Vercel 控制台检查部署日志。");
       }
 
-      const newBlob = await response.json();
-      return newBlob.url;
-    } catch (e) {
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      return data.url;
+    } catch (e: any) {
       console.error("Upload failed", e);
-      alert("图片上传失败，请重试。");
+      alert(`上传失败: ${e.message}`);
       return null;
     } finally {
       setIsUploading(false);
@@ -183,14 +198,22 @@ const App: React.FC = () => {
         body: JSON.stringify(content),
       });
       
+      const contentType = res.headers.get("content-type");
+      let data;
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        throw new Error("服务器返回了非 JSON 数据，可能是 API 路由未生效。");
+      }
+
       if (res.ok) {
         setIsAdmin(false);
         alert('内容已成功保存并全球同步！');
       } else {
-        throw new Error('Save failed');
+        throw new Error(data.error || 'Save failed');
       }
-    } catch (e) {
-      alert('保存失败，请检查网络连接。');
+    } catch (e: any) {
+      alert(`保存失败: ${e.message}`);
     } finally {
       setIsSaving(false);
     }
