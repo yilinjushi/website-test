@@ -1,0 +1,351 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Navbar } from './components/Navbar';
+import { Hero } from './components/Hero';
+import { Feature } from './components/Feature';
+import { Specs } from './components/Specs';
+import { Testimonials } from './components/Testimonials';
+import { Footer } from './components/Footer';
+import { AdminLogin } from './components/AdminLogin';
+
+export interface PageContent {
+  navbar: {
+    links: Array<{ label: string; id: string }>;
+    login: string;
+    action: string;
+  };
+  hero: { title: string; subtitle: string; bg: string };
+  features: Array<{ title: string; subtitle: string; description: string; image: string; reverse: boolean }>;
+  global: { title: string; subtitle: string; image: string };
+  testimonials: Array<{ quote: string; author: string; company: string }>;
+  specs: Array<{ label: string; value: string }>;
+}
+
+const DEFAULT_CONTENT: PageContent = {
+  navbar: {
+    links: [
+      { label: "功能特性", id: "features" },
+      { label: "技术规格", id: "specs" },
+      { label: "开发者评价", id: "testimonials" },
+      { label: "帮助与支持", id: "footer" }
+    ],
+    login: "登录",
+    action: "立即获取"
+  },
+  hero: { 
+    title: "TERMINAL", 
+    subtitle: "Engineered for Speed. Built for Builders.", 
+    bg: "https://picsum.photos/id/2/1920/1080" 
+  },
+  features: [
+    { 
+      title: "核心动力", 
+      subtitle: "一站式工作流体验", 
+      description: "无缝衔接代码编写与指令执行。VS Code 终端将高速 Shell 直接带入您的工作区，彻底消除碎片化的上下文切换，极大提升生产力。", 
+      image: "https://picsum.photos/id/1/1600/900", 
+      reverse: false 
+    },
+    { 
+      title: "极致低延迟", 
+      subtitle: "基于 xterm.js 的顶级性能", 
+      description: "通过 GPU 加速渲染引擎体验瞬时反馈。无论是运行复杂的构建任务还是监控实时日志，终端始终能跟上您的思维速度。", 
+      image: "https://picsum.photos/id/60/1600/900", 
+      reverse: true 
+    },
+    { 
+      title: "无限自定义", 
+      subtitle: "定制您的专属环境", 
+      description: "从 ZSH 到 PowerShell，从主题到快捷键，环境的每一处细节都可随心配置。多配置文件支持让您在数秒内于本地和云端环境间自由切换。", 
+      image: "https://picsum.photos/id/180/1600/900", 
+      reverse: false 
+    }
+  ],
+  global: {
+    title: "全球同步",
+    subtitle: "跨设备同步您的设置和代码片段。无论身处何地使用何种硬件，VS Code 终端都是您高效工作的起点。",
+    image: "https://picsum.photos/id/48/1920/1080"
+  },
+  testimonials: [
+    {
+      quote: "The low-latency rendering is a game changer. I've completely stopped using external terminals. It's the most polished developer experience I've had in years.",
+      author: "SARAH CHEN",
+      company: "LEAD ARCHITECT, TECHFLOW"
+    },
+    {
+      quote: "Configuration used to be a nightmare across my machines. Now, the seamless syncing and native feel make it indispensable for our entire engineering team.",
+      author: "MARCUS VANCE",
+      company: "CTO, NEBULA SYSTEMS"
+    },
+    {
+      quote: "It's rare to see a tool that combines this level of performance with such deep integration. It feels like an extension of my brain.",
+      author: "ELARA VOSS",
+      company: "SENIOR SRE, CLOUDSCALER"
+    }
+  ],
+  specs: [
+    { label: "Rendering Engine", value: "GPU Accelerated Canvas/WebGL" },
+    { label: "Terminal Core", value: "xterm.js v5.3.0" },
+    { label: "Supported Shells", value: "ZSH, Bash, PowerShell, Fish, Cmd" },
+    { label: "Unicode Support", value: "Emoji, Ligatures, Powerline" },
+    { label: "Performance", value: "Sub-16ms latency per frame" },
+    { label: "Extension Ecosystem", value: "30,000+ Ready-to-use plugins" },
+  ]
+};
+
+const App: React.FC = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const globalFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Fetch content from Serverless API on load
+    const fetchContent = async () => {
+      try {
+        const res = await fetch('/api/content');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+             // Ensure navbar structure exists for legacy data migration
+             if (!data.navbar) data.navbar = DEFAULT_CONTENT.navbar;
+             setContent(data);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load content from server", e);
+      }
+    };
+    fetchContent();
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const updateContent = (path: string, value: any) => {
+    const keys = path.split('.');
+    const newContent = { ...content };
+    let current: any = newContent;
+    for (let i = 0; i < keys.length - 1; i++) {
+      current = current[keys[i]];
+    }
+    current[keys[keys.length - 1]] = value;
+    setContent(newContent);
+  };
+
+  // Upload helper to send file to Vercel Blob API
+  const uploadFile = async (file: File): Promise<string | null> => {
+    setIsUploading(true);
+    try {
+      const response = await fetch(`/api/upload?filename=${file.name}`, {
+        method: 'POST',
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const newBlob = await response.json();
+      return newBlob.url;
+    } catch (e) {
+      console.error("Upload failed", e);
+      alert("图片上传失败，请重试。");
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGlobalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = await uploadFile(file);
+      if (url) {
+        updateContent('global.image', url);
+      }
+    }
+  };
+
+  const saveAndExit = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(content),
+      });
+      
+      if (res.ok) {
+        setIsAdmin(false);
+        alert('内容已成功保存并全球同步！');
+      } else {
+        throw new Error('Save failed');
+      }
+    } catch (e) {
+      alert('保存失败，请检查网络连接。');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const editStyle = isAdmin ? 'focus:outline-white focus:outline-dashed focus:outline-1 focus:bg-white/5 cursor-text transition-all relative z-20' : '';
+
+  return (
+    <div className={`min-h-screen bg-black overflow-x-hidden ${isAdmin ? 'border-4 border-blue-500/50' : ''}`}>
+      {isUploading && (
+        <div className="fixed top-0 left-0 w-full h-1 bg-zinc-900 z-[200]">
+          <div className="h-full bg-blue-500 animate-pulse w-full"></div>
+        </div>
+      )}
+      
+      <Navbar 
+        isScrolled={isScrolled} 
+        isAdmin={isAdmin} 
+        content={content.navbar}
+        onUpdate={(key, val) => updateContent(`navbar.${key}`, val)}
+      />
+      
+      <main>
+        <Hero 
+          content={content.hero} 
+          isAdmin={isAdmin} 
+          onUpdate={(key, val) => updateContent(`hero.${key}`, val)}
+          onUpload={uploadFile}
+        />
+        
+        <div id="features">
+          {content.features.map((f, idx) => (
+            <Feature 
+              key={idx}
+              title={f.title}
+              subtitle={f.subtitle}
+              description={f.description}
+              image={f.image}
+              reverse={f.reverse}
+              isAdmin={isAdmin}
+              onUpdate={(key, val) => updateContent(`features.${idx}.${key}`, val)}
+              onUpload={uploadFile}
+            />
+          ))}
+        </div>
+
+        <section className="py-24 bg-zinc-900/30 relative">
+          <div className="max-w-screen-xl mx-auto px-6 text-center">
+            <h2 
+              contentEditable={isAdmin}
+              onBlur={(e) => updateContent('global.title', e.currentTarget.textContent)}
+              suppressContentEditableWarning
+              className={`text-4xl md:text-6xl font-extrabold mb-8 tracking-tighter text-glow ${editStyle}`}
+            >
+              {content.global.title}
+            </h2>
+            <p 
+              contentEditable={isAdmin}
+              onBlur={(e) => updateContent('global.subtitle', e.currentTarget.textContent)}
+              suppressContentEditableWarning
+              className={`text-zinc-400 max-w-2xl mx-auto text-lg md:text-xl font-light mb-12 ${editStyle}`}
+            >
+              {content.global.subtitle}
+            </p>
+            <div className="aspect-video w-full rounded-sm overflow-hidden bg-black relative group">
+              <img 
+                src={content.global.image} 
+                alt="Global Workspace" 
+                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-700"
+              />
+              {isAdmin && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 gap-4">
+                  <input 
+                    type="file" 
+                    ref={globalFileInputRef} 
+                    onChange={handleGlobalFileChange} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+                  <button 
+                    onClick={() => globalFileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="bg-white text-black px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] shadow-2xl flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    {isUploading ? '正在上传...' : '本地上传图片'}
+                  </button>
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-20 h-20 rounded-full border border-white flex items-center justify-center bg-black/40 backdrop-blur-sm group-hover:scale-110 transition-transform">
+                  <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="testimonials">
+          <Testimonials 
+            content={content.testimonials} 
+            isAdmin={isAdmin} 
+            onUpdate={(idx, key, val) => updateContent(`testimonials.${idx}.${key}`, val)}
+          />
+        </div>
+
+        <Specs 
+          content={content.specs} 
+          isAdmin={isAdmin} 
+          onUpdate={(idx, key, val) => updateContent(`specs.${idx}.${key}`, val)}
+        />
+      </main>
+
+      <div id="footer">
+        <Footer onAdminClick={() => setShowLogin(true)} />
+      </div>
+
+      {isAdmin && (
+        <div className="fixed top-24 right-6 z-[110] flex flex-col gap-4">
+          <button 
+            onClick={saveAndExit}
+            disabled={isSaving}
+            className="bg-white text-black px-6 py-4 font-bold text-xs tracking-[0.2em] uppercase shadow-2xl hover:bg-zinc-200 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isSaving ? '正在同步...' : '保存并退出'}
+          </button>
+          <button 
+            onClick={() => setIsAdmin(false)}
+            className="bg-red-600 text-white px-6 py-4 font-bold text-xs tracking-[0.2em] uppercase shadow-2xl hover:bg-red-700 transition-all active:scale-95"
+          >
+            取消修改
+          </button>
+        </div>
+      )}
+
+      {showLogin && (
+        <AdminLogin 
+          onClose={() => setShowLogin(false)} 
+          onLogin={() => {
+            setIsAdmin(true);
+            setShowLogin(false);
+          }} 
+        />
+      )}
+
+      {/* Persistent CTA */}
+      <div className={`fixed bottom-0 left-0 w-full p-4 md:p-6 flex justify-center items-center z-50 transition-transform duration-500 ${isScrolled ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="w-full md:w-96 py-4 bg-white text-black text-sm font-bold tracking-[0.2em] uppercase flex justify-center items-center">
+          <span contentEditable={isAdmin} suppressContentEditableWarning className={isAdmin ? 'cursor-text px-4 outline-dashed outline-1 outline-black/20' : ''}>免费试用 VS CODE</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
