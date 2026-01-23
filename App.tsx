@@ -372,11 +372,6 @@ const App: React.FC = () => {
                   </button>
                 </div>
               )}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-20 h-20 rounded-full border border-white flex items-center justify-center bg-black/40 backdrop-blur-sm group-hover:scale-110 transition-transform">
-                  <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-2"></div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
