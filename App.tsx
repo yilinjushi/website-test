@@ -19,6 +19,10 @@ export interface PageContent {
   global: { title: string; subtitle: string; image: string };
   testimonials: Array<{ quote: string; author: string; company: string }>;
   specs: Array<{ label: string; value: string }>;
+  specsFooter: {
+    disclaimer: string;
+    buttonText: string;
+  };
 }
 
 const DEFAULT_CONTENT: PageContent = {
@@ -89,7 +93,11 @@ const DEFAULT_CONTENT: PageContent = {
     { label: "Unicode Support", value: "Emoji, Ligatures, Powerline" },
     { label: "Performance", value: "Sub-16ms latency per frame" },
     { label: "Extension Ecosystem", value: "30,000+ Ready-to-use plugins" },
-  ]
+  ],
+  specsFooter: {
+    disclaimer: "Performance metrics are based on internal testing using standard developer hardware. Actual results may vary depending on local machine resources and background processes.",
+    buttonText: "Download Data Sheet"
+  }
 };
 
 const App: React.FC = () => {
@@ -117,6 +125,7 @@ const App: React.FC = () => {
              if (data.testimonials) merged.testimonials = data.testimonials;
              if (data.specs) merged.specs = data.specs;
              if (data.navbar) merged.navbar = data.navbar;
+             if (data.specsFooter) merged.specsFooter = data.specsFooter;
              
              setContent(merged);
           }
@@ -342,8 +351,10 @@ const App: React.FC = () => {
 
         <Specs 
           content={content.specs} 
+          specsFooter={content.specsFooter}
           isAdmin={isAdmin} 
           onUpdate={(idx, key, val) => updateContent(`specs.${idx}.${key}`, val)}
+          onUpdateFooter={(key, val) => updateContent(`specsFooter.${key}`, val)}
         />
       </main>
 

@@ -3,11 +3,13 @@ import React from 'react';
 
 interface SpecsProps {
   content: Array<{ label: string; value: string }>;
+  specsFooter: { disclaimer: string; buttonText: string };
   isAdmin: boolean;
   onUpdate: (idx: number, key: string, val: string) => void;
+  onUpdateFooter: (key: string, val: string) => void;
 }
 
-export const Specs: React.FC<SpecsProps> = ({ content, isAdmin, onUpdate }) => {
+export const Specs: React.FC<SpecsProps> = ({ content, specsFooter, isAdmin, onUpdate, onUpdateFooter }) => {
   return (
     <section id="specs" className="py-24 bg-black border-t border-zinc-900">
       <div className="max-w-[1200px] mx-auto px-6">
@@ -37,11 +39,21 @@ export const Specs: React.FC<SpecsProps> = ({ content, isAdmin, onUpdate }) => {
         </div>
 
         <div className="mt-20 text-center">
-            <p className="text-zinc-500 text-xs font-light max-w-xl mx-auto mb-8">
-                Performance metrics are based on internal testing using standard developer hardware. Actual results may vary depending on local machine resources and background processes.
+            <p 
+              contentEditable={isAdmin}
+              onBlur={(e) => onUpdateFooter('disclaimer', e.currentTarget.textContent || '')}
+              suppressContentEditableWarning
+              className={`text-zinc-500 text-xs font-light max-w-xl mx-auto mb-8 ${isAdmin ? 'outline-dashed outline-1 outline-white/50 cursor-text px-2 py-1' : ''}`}
+            >
+                {specsFooter.disclaimer}
             </p>
-            <button className="px-12 py-4 border border-zinc-700 text-xs font-bold tracking-widest hover:border-white transition-colors uppercase">
-                Download Data Sheet
+            <button 
+              contentEditable={isAdmin}
+              onBlur={(e) => onUpdateFooter('buttonText', e.currentTarget.textContent || '')}
+              suppressContentEditableWarning
+              className={`px-12 py-4 border border-zinc-700 text-xs font-bold tracking-widest hover:border-white transition-colors uppercase ${isAdmin ? 'outline-dashed outline-1 outline-white/50 cursor-text' : ''}`}
+            >
+                {specsFooter.buttonText}
             </button>
         </div>
       </div>
