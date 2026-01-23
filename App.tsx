@@ -105,13 +105,19 @@ const App: React.FC = () => {
     const fetchContent = async () => {
       try {
         const res = await fetch('/api/content');
-        // 尝试解析 JSON，如果解析失败（比如返回了 404 HTML），则忽略
         const contentType = res.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const data = await res.json();
           if (data) {
-             if (!data.navbar) data.navbar = DEFAULT_CONTENT.navbar;
-             setContent(data);
+             // 深度合并，防止缺少 key
+             const merged = { ...DEFAULT_CONTENT, ...data };
+             // 特殊处理数组，如果 data 里有就用 data 的
+             if (data.features) merged.features = data.features;
+             if (data.testimonials) merged.testimonials = data.testimonials;
+             if (data.specs) merged.specs = data.specs;
+             if (data.navbar) merged.navbar = data.navbar;
+             
+             setContent(merged);
           }
         }
       } catch (e) {
@@ -158,7 +164,7 @@ const App: React.FC = () => {
       if (!contentType || contentType.indexOf("application/json") === -1) {
         const text = await response.text();
         console.error("API Error (Non-JSON):", text);
-        throw new Error("服务器配置错误：API 未正确响应 JSON。请在 Vercel 控制台检查部署日志。");
+        throw new Error("服务器上传配置错误，请检查 Blob 存储连接。");
       }
 
       const data = await response.json();
@@ -213,7 +219,7 @@ const App: React.FC = () => {
         throw new Error(data.error || 'Save failed');
       }
     } catch (e: any) {
-      alert(`保存失败: ${e.message}`);
+      alert(`${e.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -372,3 +378,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
