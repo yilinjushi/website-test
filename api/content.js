@@ -1,41 +1,58 @@
 
-import { kv } from '@vercel/kv';
+import { put, list } from '@vercel/blob';
 
 export default async function handler(req, res) {
-  // 获取当前环境所有变量名（不包含值，安全）
-  const envKeys = Object.keys(process.env).filter(key => key.startsWith('KV_') || key.startsWith('BLOB_'));
-  
-  // 1. 检查 KV 是否配置
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    const debugInfo = envKeys.length > 0 ? `检测到的变量: ${envKeys.join(', ')}` : '未检测到任何 KV/Blob 变量';
-    
-    const errorMsg = `数据库连接失败。\n\n原因：当前部署版本未包含数据库密钥。\n\n调试信息：${debugInfo}\n\n解决方法：请不要刷新旧链接。请回到 Vercel Dashboard，点击最新一次部署（刚刚 Redeploy 的那个）产生的【Visit】按钮访问新地址。`;
-    
+  // 1. 检查 Blob Token (我们在截图中确认这个是存在的)
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    const errorMsg = '严重错误: Blob Token 丢失。请确保在 Vercel Storage 中连接了 Blob 数据库。';
     console.error(errorMsg);
-    
-    // 如果是 GET 请求，返回 null 让前端使用默认内容
-    if (req.method === 'GET') {
-       return res.status(200).json(null); 
-    }
-    // 如果是 POST 请求，返回具体错误
     return res.status(500).json({ error: errorMsg });
   }
 
+  const DB_FILENAME = 'vscode_landing_content.json';
+
   try {
+    // GET: 读取内容
     if (req.method === 'GET') {
-      const data = await kv.get('vscode_landing_content');
-      return res.status(200).json(data || null);
+      // 1. 在 Blob 中查找文件
+      const { blobs } = await list({ prefix: DB_FILENAME, limit: 1 });
+      
+      // 2. 如果没找到，返回 null (使用前端默认内容)
+      if (!blobs || blobs.length === 0) {
+        return res.status(200).json(null);
+      }
+
+      // 3. 如果找到了，获取下载链接并读取内容
+      // 添加时间戳参数避免缓存
+      const response = await fetch(`${blobs[0].url}?t=${Date.now()}`);
+      
+      if (!response.ok) {
+        throw new Error('无法从 Blob 读取内容');
+      }
+
+      const data = await response.json();
+      return res.status(200).json(data);
     } 
     
+    // POST: 保存内容
     if (req.method === 'POST') {
       const content = req.body;
-      await kv.set('vscode_landing_content', content);
+      
+      // 使用 put 覆盖上传同名文件，实现“数据库”更新效果
+      // addRandomSuffix: false 确保文件名固定，像数据库一样
+      await put(DB_FILENAME, JSON.stringify(content), {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/json'
+      });
+
       return res.status(200).json({ success: true });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('KV Operation Error:', error);
-    return res.status(500).json({ error: 'Database Error: ' + error.message });
+    console.error('Storage Error:', error);
+    return res.status(500).json({ error: 'Storage Error: ' + error.message });
   }
 }
+
