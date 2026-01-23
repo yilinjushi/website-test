@@ -349,7 +349,7 @@ const App: React.FC = () => {
               <img 
                 src={content.global.image} 
                 alt="Global Workspace" 
-                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-700"
+                className="w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-700"
               />
               {isAdmin && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 gap-4">
