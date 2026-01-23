@@ -14,6 +14,12 @@ export default async function handler(req, res) {
   try {
     // GET: 读取内容
     if (req.method === 'GET') {
+      // 设置缓存控制头：禁用 CDN 缓存，因为内容是可变的
+      // 使用 private, no-cache 确保每次请求都验证内容是否最新
+      // 避免管理员更新后 CDN 返回旧缓存的问题
+      res.setHeader('Cache-Control', 'private, no-cache, must-revalidate');
+      res.setHeader('Content-Type', 'application/json');
+      
       // 1. 在 Blob 中查找文件
       const { blobs } = await list({ prefix: DB_FILENAME, limit: 1 });
       
@@ -23,8 +29,15 @@ export default async function handler(req, res) {
       }
 
       // 3. 如果找到了，获取下载链接并读取内容
-      // 添加时间戳参数避免缓存
-      const response = await fetch(`${blobs[0].url}?t=${Date.now()}`);
+      // 添加时间戳参数避免缓存（包括 CDN 和服务端缓存）
+      // 由于使用 addRandomSuffix: false，同一个 URL 会被重复使用，需要时间戳来确保缓存失效
+      const blobUrl = blobs[0].url;
+      const response = await fetch(`${blobUrl}?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      });
       
       if (!response.ok) {
         throw new Error('无法从 Blob 读取内容');

@@ -107,7 +107,8 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string | null>(null);
-  const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
+  const [content, setContent] = useState<PageContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const globalFileInputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +119,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const res = await fetch('/api/content');
+        // 添加时间戳避免浏览器缓存
+        const res = await fetch(`/api/content?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
+        });
         const contentType = res.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const data = await res.json();
@@ -133,10 +140,20 @@ const App: React.FC = () => {
              if (data.specsFooter) merged.specsFooter = data.specsFooter;
              
              setContent(merged);
+          } else {
+            // 如果没有数据，使用默认内容
+            setContent(DEFAULT_CONTENT);
           }
+        } else {
+          // 如果响应不是 JSON，使用默认内容
+          setContent(DEFAULT_CONTENT);
         }
       } catch (e) {
         console.error("Failed to load content", e);
+        // 出错时使用默认内容
+        setContent(DEFAULT_CONTENT);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchContent();
@@ -156,6 +173,7 @@ const App: React.FC = () => {
   }, [isAdminPath, isAdmin, showLogin]);
 
   const updateContent = (path: string, value: any) => {
+    if (!content) return;
     const keys = path.split('.');
     const newContent = { ...content };
     let current: any = newContent;
@@ -245,6 +263,7 @@ const App: React.FC = () => {
       }
 
       if (res.ok) {
+        // 保存成功，内容已经在 state 中，无需重新获取
         setIsAdmin(false);
         setAdminPassword(null);
         alert('内容已成功保存并全球同步！');
@@ -259,6 +278,15 @@ const App: React.FC = () => {
   };
 
   const editStyle = isAdmin ? 'focus:outline-white focus:outline-dashed focus:outline-1 focus:bg-white/5 cursor-text transition-all relative z-20' : '';
+
+  // 在数据加载完成前，显示加载状态或空白页面
+  if (isLoading || !content) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-zinc-500 text-sm">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-black overflow-x-hidden ${isAdmin ? 'border-4 border-blue-500/50' : ''}`}>
