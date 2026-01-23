@@ -157,10 +157,10 @@ const App: React.FC = () => {
 
     setIsUploading(true);
     try {
-      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
         method: 'POST',
         headers: {
-            'Content-Type': file.type,
+            'Content-Type': 'application/octet-stream',
             'x-admin-password': adminPassword,
         },
         body: file,
