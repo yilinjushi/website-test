@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 interface AdminLoginProps {
-  onLogin: () => void;
+  onLogin: (password: string) => void;
   onClose: () => void;
 }
 
@@ -36,7 +36,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onClose }) => {
 
       if (res.ok) {
         setLoading(false);
-        onLogin();
+        onLogin(password);
       } else {
         // 错误处理：显示错误状态，清空密码，3秒后自动关闭
         setLoading(false);

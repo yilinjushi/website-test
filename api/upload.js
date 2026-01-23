@@ -1,9 +1,23 @@
 
 import { put } from '@vercel/blob';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // 0. 检查密码
+  const serverPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const clientPassword = req.headers['x-admin-password'];
+
+  if (clientPassword !== serverPassword) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid password' });
   }
 
   // 1. 检查 Blob 是否配置

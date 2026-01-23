@@ -96,6 +96,7 @@ const App: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState<string | null>(null);
   const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -145,6 +146,10 @@ const App: React.FC = () => {
   };
 
   const uploadFile = async (file: File): Promise<string | null> => {
+    if (!adminPassword) {
+      alert("错误：用户未认证，请重新登录。");
+      return null;
+    }
     if (file.size > 4 * 1024 * 1024) {
         alert("图片太大！请上传小于 4MB 的图片。");
         return null;
@@ -155,7 +160,8 @@ const App: React.FC = () => {
       const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
         headers: {
-            'Content-Type': file.type, 
+            'Content-Type': file.type,
+            'x-admin-password': adminPassword,
         },
         body: file,
       });
@@ -194,12 +200,17 @@ const App: React.FC = () => {
   };
 
   const saveAndExit = async () => {
+    if (!adminPassword) {
+      alert("错误：用户未认证，请重新登录。");
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await fetch('/api/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-admin-password': adminPassword,
         },
         body: JSON.stringify(content),
       });
@@ -214,6 +225,7 @@ const App: React.FC = () => {
 
       if (res.ok) {
         setIsAdmin(false);
+        setAdminPassword(null);
         alert('内容已成功保存并全球同步！');
       } else {
         throw new Error(data.error || 'Save failed');
@@ -349,7 +361,10 @@ const App: React.FC = () => {
             {isSaving ? '正在同步...' : '保存并退出'}
           </button>
           <button 
-            onClick={() => setIsAdmin(false)}
+            onClick={() => {
+              setIsAdmin(false);
+              setAdminPassword(null);
+            }}
             className="bg-red-600 text-white px-6 py-4 font-bold text-xs tracking-[0.2em] uppercase shadow-2xl hover:bg-red-700 transition-all active:scale-95"
           >
             取消修改
@@ -360,7 +375,8 @@ const App: React.FC = () => {
       {showLogin && (
         <AdminLogin 
           onClose={() => setShowLogin(false)} 
-          onLogin={() => {
+          onLogin={(password) => {
+            setAdminPassword(password);
             setIsAdmin(true);
             setShowLogin(false);
           }} 

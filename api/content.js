@@ -36,6 +36,14 @@ export default async function handler(req, res) {
     
     // POST: 保存内容
     if (req.method === 'POST') {
+      // 安全检查：验证密码
+      const serverPassword = process.env.ADMIN_PASSWORD || 'admin123';
+      const clientPassword = req.headers['x-admin-password'];
+
+      if (clientPassword !== serverPassword) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid password' });
+      }
+
       const content = req.body;
       
       // 使用 put 覆盖上传同名文件，实现“数据库”更新效果
