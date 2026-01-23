@@ -52,12 +52,14 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             <SocialIcon icon="YT" />
             <SocialIcon icon="GH" />
           </div>
-          <button 
-            onClick={onAdminClick}
-            className="text-[9px] font-bold tracking-[0.2em] text-zinc-700 hover:text-white transition-colors uppercase border-b border-zinc-900 hover:border-white pb-1"
-          >
-            Admin Entrance
-          </button>
+          {onAdminClick && (
+            <button 
+              onClick={onAdminClick}
+              className="text-[9px] font-bold tracking-[0.2em] text-zinc-700 hover:text-white transition-colors uppercase border-b border-zinc-900 hover:border-white pb-1"
+            >
+              Admin Entrance
+            </button>
+          )}
         </div>
       </div>
 

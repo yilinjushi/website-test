@@ -100,6 +100,8 @@ const DEFAULT_CONTENT: PageContent = {
   }
 };
 
+const ADMIN_PATH = '/oijfoasdfadfi66165';
+
 const App: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -109,6 +111,9 @@ const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const globalFileInputRef = useRef<HTMLInputElement>(null);
+
+  // 检查是否为管理路径
+  const isAdminPath = window.location.pathname === ADMIN_PATH;
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -142,6 +147,13 @@ const App: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // 当访问管理路径时，自动显示登录界面
+  useEffect(() => {
+    if (isAdminPath && !isAdmin && !showLogin) {
+      setShowLogin(true);
+    }
+  }, [isAdminPath, isAdmin, showLogin]);
 
   const updateContent = (path: string, value: any) => {
     const keys = path.split('.');
@@ -359,7 +371,7 @@ const App: React.FC = () => {
       </main>
 
       <div id="footer">
-        <Footer onAdminClick={() => setShowLogin(true)} />
+        <Footer onAdminClick={isAdminPath ? () => setShowLogin(true) : undefined} />
       </div>
 
       {isAdmin && (
